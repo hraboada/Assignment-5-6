@@ -133,7 +133,17 @@ for file_name in list_of_files:
         if subor == o.organism:
             org = o
     nucleotide = SeqIO.read(file_name, "fasta")
-    protein = nucleotide.translate()
+
+    # finding number of letters to trim
+    trim_char = len(nucleotide) % 3
+
+    # trim sequence to translate it
+    if trim_char > 0:
+        trim_seq = nucleotide[:-trim_char]
+    else:
+        trim_seq = nucleotide
+
+    protein = trim_seq.translate()
     sequence_of_protein = protein.seq
     sequence_of_protein = str(sequence_of_protein)
     protein_analysis = ProteinAnalysis(sequence_of_protein)
