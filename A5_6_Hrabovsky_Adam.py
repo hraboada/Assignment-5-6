@@ -1,3 +1,8 @@
+# link to GitHub repistory: https://github.com/hraboada/Assignment-5-6.git
+# for the sequence alignment, I used a tool called MUSCLE
+# I provided the .exe file in the submission folder
+# in order for the code to work properly, the .exe file for the MUSCLE needs to be in the same repository as the main file (in your local computer)
+
 import Bio
 import pandas as pd
 from Bio import Entrez, Phylo
