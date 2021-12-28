@@ -1,4 +1,5 @@
 # link to GitHub repistory: https://github.com/hraboada/Assignment-5-6.git
+# in order for my code to make sense, you need to read the information in the console from the beginning
 # for the sequence alignment, I used a tool called MUSCLE
 # I provided the .exe file in the submission folder
 # in order for the code to work properly, the .exe file for the MUSCLE needs to be in the same repository as the main file (in your local computer)
@@ -10,9 +11,9 @@ from Bio.Seq import UndefinedSequenceError
 from Bio.SeqUtils import GC
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqUtils.ProtParam import ProteinAnalysis
-from Bio import SeqIO
 from Bio.Align.Applications import MuscleCommandline
 from Bio import AlignIO
+from Bio import SeqIO
 
 Entrez.email = "be21x008@technikum-wien.at"
 
@@ -125,6 +126,7 @@ for o in list5Org:
 # and analyzing them - calculating the required info:
 # aromaticity, insatbility, isoelectric point and secondary structure
 # https://biopython.org/docs/1.75/api/Bio.SeqUtils.ProtParam.html - my source for protein analysis
+
 print("\nProtein structure analysis:")
 for file_name in list_of_files:
     org = None
@@ -134,37 +136,53 @@ for file_name in list_of_files:
             org = o
     nucleotide = SeqIO.read(file_name, "fasta")
 
-    # finding number of letters to trim
+    # finding number of nucleotides to trim
     trim_char = len(nucleotide) % 3
 
-    # trim sequence to translate it
+    # trim the sequence to translate it
     if trim_char > 0:
-        trim_seq = nucleotide[:-trim_char]
+       trim_seq = nucleotide[:-trim_char]
     else:
-        trim_seq = nucleotide
+       trim_seq = nucleotide
 
-    protein = trim_seq.translate()
-    sequence_of_protein = protein.seq
-    sequence_of_protein = str(sequence_of_protein)
-    protein_analysis = ProteinAnalysis(sequence_of_protein)
+    table = 1
+    min_protein_length = 15
+
+    # before translating nucleotide sequences into proteins, I needed to find all 6 open reading frames
+    # I found and adjusted this code at https://www.biostars.org/p/398203/
+    list_of_ORFs = []
+    for strand, nuc in [(+1, trim_seq.seq), (-1, trim_seq.seq.reverse_complement())]:
+        for frame in range(3):
+            length = 3 * ((len(trim_seq)-frame) // 3) #Multiple of three
+            for pro in nuc[frame:frame+length].translate(table).split("*"):
+                splitlocal = pro.find('M')
+                seq_final = pro[splitlocal:]
+                if len(seq_final) >= min_protein_length:
+                    list_of_ORFs.append(seq_final)
+
+    print("Organism:", org.organism)
+    # from list of 6 ORFs I picked the longest one
+    longest_sequence = max(list_of_ORFs, key=len)
+    print("Longest protein sequence is:", longest_sequence)
+    longest_sequence = str(longest_sequence)
+
+    # here I am performing the protein analysis:
+    # if there is an "X" in peptide chain, it means that it contains an unknown, unidentified amino-acid - https://www.biostars.org/p/9465475/
+    # it's not possible to calculate instability index with unknown amino acids in the chain
+    # therefore I had to remove them
+    if longest_sequence.__contains__("X"):
+        longest_sequence = longest_sequence.replace("X", "")
+        print("In this case I had to remove unknown amino acid(s) in peptide chain")
+    protein_analysis = ProteinAnalysis(longest_sequence)
     org.aromaticity = protein_analysis.aromaticity()
-    org.isoelectricPoint = protein_analysis.isoelectric_point()
-    if sequence_of_protein.__contains__("*"):
-        sequence_of_protein = sequence_of_protein.replace("*", "")
-    if sequence_of_protein.__contains__("X"):
-        sequence_of_protein = sequence_of_protein.replace("X", "")
-    protein_analysis = ProteinAnalysis(sequence_of_protein)
     org.instability = protein_analysis.instability_index()
-    sequence_of_protein = protein.seq
-    sequence_of_protein = str(sequence_of_protein)
-    protein_analysis = ProteinAnalysis(sequence_of_protein)
+    org.isoelectricPoint = protein_analysis.isoelectric_point()
     sec_struc = protein_analysis.secondary_structure_fraction()
-    print(org.organism)
     print("Fractions of amino acids that tend to be helix:", sec_struc[0])
     print("Fractions of amino acids that tend to be turn:", sec_struc[1])
     print("Fractions of amino acids that tend to be sheet:", sec_struc[2])
 
-# performing the sequence alignment and creating a phylogenetic tree from it
+# performing the sequence alignment and creating a phylogenetic tree from it:
 # https://www.youtube.com/watch?v=wBdz3vFQ4Ks&t=922s
 # I was following this tutorial on youtube and for the alignment they use a tool called MUSCLE
 # I included an .exe file in my submission folder
@@ -228,7 +246,7 @@ for org in list5Org:
     isoElPoint.append(org.isoelectricPoint)
 
 result = pd.DataFrame(list(zip(organism, accNumber, title, dlzka, percentage, instability, aroma, isoElPoint)),
-          columns = ["Organism", "Accession number", "Title", "Length of the sequence", "GC percentage", "Instability", "Aromaticity", "Isoelectric point"])
+          columns = ["Organism", "Accession number", "Title", "Length of the nucleotide sequence", "GC percentage", "Instability", "Aromaticity", "Isoelectric point"])
 pd.set_option("display.max_rows", None, "display.max_columns", None)
 print("\nTable with all results:")
 print(result)
